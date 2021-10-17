@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"sync"
 )
@@ -32,15 +33,35 @@ func NewServer(ip string, port int) *Server {
 }
 
 func (this *Server) Handler(conn net.Conn) {
-	user := NewUser(conn)
+	user := NewUser(conn, this)
 
 	// 用户上线，将用户加入到onlineMap
-	this.mapLock.Lock()
-	this.OnlineMap[user.Name] = user
-	this.mapLock.Unlock()
+	user.Online()
 
-	// 广播当前用户上线消息
-	this.Broadcast(user, "已上线")
+	// 读取客户端消息
+	go func () {
+		buf := make([]byte, 4096)
+
+		for {
+			n, err := conn.Read(buf)
+
+			if n == 0 {
+				user.Offline()
+				return
+			}
+
+			if err != nil && err != io.EOF {
+				fmt.Printf("Conn Read Err:", err)
+				return
+			}
+
+			// 提取用户消息（去除末尾\n）
+			msg := string(buf[:n-1])
+
+			// 将消息广播
+			user.DoMessage(msg)
+		}
+	}()
 
 	// 阻塞当前handler，避免退出
 	select {}
