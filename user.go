@@ -1,6 +1,9 @@
 package main
 
-import "net"
+import (
+	"fmt"
+	"net"
+)
 
 type User struct {
 	Name string
@@ -47,8 +50,23 @@ func (this *User) Offline()  {
 	this.DoMessage("用户下线")
 }
 
+func (this *User) SendMsg(msg string)  {
+	// 用户下线，将用户从onlineMap移除
+	this.conn.Write([]byte(msg))
+}
+
 func (this *User) DoMessage(msg string)  {
-	this.server.Broadcast(this, msg)
+
+	if msg == "who" {
+		this.server.mapLock.Lock()
+		for _, item := range this.server.OnlineMap {
+			onlineMsg := fmt.Sprintf("[%s]在线\n", item.Name)
+			this.SendMsg(onlineMsg)
+		}
+		this.server.mapLock.Unlock()
+	} else {
+		this.server.Broadcast(this, msg)
+	}
 }
 
 func (this *User) ListenMessage() {
