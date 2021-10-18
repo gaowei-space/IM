@@ -65,6 +65,27 @@ func (this *User) DoMessage(msg string)  {
 			this.SendMsg(onlineMsg)
 		}
 		this.server.mapLock.Unlock()
+	} else if len(msg) > 4 && msg[:3] == "to|" {
+		remoteName := strings.Split(msg, "|")[1]
+		if remoteName == "" {
+			this.SendMsg("用户名不能为空\n")
+			return
+		}
+
+		toUser, ok := this.server.OnlineMap[remoteName]
+		if !ok {
+			this.SendMsg("用户不存在\n")
+			return
+		}
+
+		content := strings.Split(msg, "|")[2]
+		if content == "" {
+			this.SendMsg("消息不能为空\n")
+			return
+		}
+
+		toUser.SendMsg(content + "---来自["+ this.Name + "]\n")
+
 	} else if len(msg) > 7 && msg[:7] == "rename|" {
 		newName := strings.Split(msg,"|")[1]
 
