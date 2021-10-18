@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 	"sync"
+	"time"
 )
 
 type Server struct{
@@ -38,6 +39,9 @@ func (this *Server) Handler(conn net.Conn) {
 	// 用户上线，将用户加入到onlineMap
 	user.Online()
 
+	// 用户获取状态管道
+	isLive := make(chan bool)
+
 	// 读取客户端消息
 	go func () {
 		buf := make([]byte, 4096)
@@ -54,6 +58,9 @@ func (this *Server) Handler(conn net.Conn) {
 				fmt.Printf("Conn Read Err:", err)
 				return
 			}
+			
+			// 用户活跃状态
+			isLive <- true
 
 			// 提取用户消息（去除末尾\n）
 			msg := string(buf[:n-1])
@@ -64,7 +71,24 @@ func (this *Server) Handler(conn net.Conn) {
 	}()
 
 	// 阻塞当前handler，避免退出
-	select {}
+	for {
+		select {
+		case <- isLive:
+		
+		case <-time.After(time.Second*5):
+			// 发送消息
+			user.SendMsg("你被踢了")
+
+			// 销毁用户资源
+			close(user.C)
+
+			// 关闭连接
+			conn.Close()
+
+			// 退出
+			return
+		}
+	}
 }
 
 func (this *Server) Broadcast(user *User, msg string) {
