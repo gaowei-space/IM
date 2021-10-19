@@ -49,7 +49,7 @@ func (client *Client) menu() bool {
 		client.flag = flag
 		return true
 	} else {
-		fmt.Println("请输入正确的数值")
+		fmt.Println("请输入0-3的数字")
 		return false
 	}
 }
@@ -80,13 +80,61 @@ func (client *Client) Run() {
 			client.PublicChat()
 			break
 		case 2:
-			fmt.Println("开启私聊模式")
+			client.PrivateChat()
 			break
 		case 3:
 			client.updateName()
 			break
 		}
 	}
+}
+
+func (client *Client) PrivateChat() {
+	var remoteName string
+	var chatMsg string
+
+	client.SelectUsers()
+
+	fmt.Println("请输入用户名（exit退出）：")
+	fmt.Scanln(&remoteName)	
+
+	if remoteName != "exit" {
+		fmt.Println("请输入聊天内容（exit退出）：")
+		fmt.Scanln(&chatMsg)
+
+		for chatMsg != "exit" {
+			client.SendMsg("to|"+remoteName+"|"+chatMsg+"\n\n")
+	
+			chatMsg = ""
+			fmt.Println("请输入聊天内容（exit退出）")
+			fmt.Scanln(&chatMsg)
+		}
+		client.SelectUsers()
+	
+		fmt.Println("请输入用户名（exit退出）：")
+		fmt.Scanln(&remoteName)	
+	}
+}
+
+func (client *Client) SelectUsers() {
+	client.SendMsg("who")
+}
+
+func (client *Client) SendMsg(msg string) bool {
+	if len(msg) == 0 {
+		fmt.Println("消息不能为空")
+		return false
+	}
+
+	sendMsg := msg + "\n"
+
+	_, err := client.conn.Write([]byte(sendMsg))
+
+	if err != nil {
+		fmt.Println("发送消息异常", err)
+		return false
+	}
+	return true
 }
 
 func (client *Client) PublicChat() {
